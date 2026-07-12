@@ -8,7 +8,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
 ARCHIVE_DIR = REPO_ROOT / "archive"
-VALID_SHOWS = ("二十而已",)
+
+
+def _valid_shows():
+    from host_config import get_valid_shows
+    return get_valid_shows()
 
 
 def load_env_file(env_path: Path) -> None:
@@ -185,8 +189,9 @@ def sanitize_filename(name: str, max_len: int = 80) -> str:
 
 
 def save_archive(text: str, show: str, title: str) -> Path:
-    if show not in VALID_SHOWS:
-        raise ValueError(f"节目名必须是: {', '.join(VALID_SHOWS)}")
+    valid = _valid_shows()
+    if show not in valid:
+        raise ValueError(f"节目名必须是: {', '.join(valid)}（在 host.md 中配置）")
     show_dir = ARCHIVE_DIR / show
     show_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{sanitize_filename(title)}_{date.today().strftime('%Y%m%d')}.txt"

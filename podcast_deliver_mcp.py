@@ -16,13 +16,11 @@ import yaml
 from mcp.server.fastmcp import FastMCP
 
 import transcribe as asr
+from host_config import get_default_show, get_show_positioning, get_valid_shows
 
 REPO_ROOT = Path(__file__).resolve().parent
-HOST_MD = REPO_ROOT / "host.md"
 ARCHIVE_DIR = REPO_ROOT / "archive"
 CONFIG_PATH = REPO_ROOT / "config.yaml"
-VALID_SHOWS = ("二十而已",)
-DEFAULT_SHOW = "二十而已"
 
 mcp = FastMCP("podcast_deliver_assistant")
 
@@ -36,22 +34,6 @@ def load_config() -> dict:
 
 def _ensure_api_key() -> str:
     return asr.ensure_api_key()
-
-
-def get_show_positioning(show_name: str, override: str = "") -> str:
-    show_name = show_name.strip() or DEFAULT_SHOW
-    if override.strip():
-        return override.strip()
-
-    config = load_config()
-    show_cfg = (config.get("shows") or {}).get(show_name, {})
-    if show_cfg.get("positioning", "").strip():
-        return show_cfg["positioning"].strip()
-
-    if HOST_MD.is_file():
-        content = HOST_MD.read_text(encoding="utf-8")
-        return content.strip()
-    return f"节目：{show_name}"
 
 
 def _build_generation_prompt(transcript: str, show_name: str, positioning: str) -> str:
@@ -117,16 +99,17 @@ def _call_llm(prompt: str, model: str = None) -> str:
 
 
 def _normalize_show(show_name: str) -> str:
-    name = (show_name or DEFAULT_SHOW).strip()
-    if name not in VALID_SHOWS:
-        raise ValueError(f"节目名必须是: {', '.join(VALID_SHOWS)}")
+    valid = get_valid_shows()
+    name = (show_name or get_default_show()).strip()
+    if name not in valid:
+        raise ValueError(f"节目名必须是: {', '.join(valid)}（在 host.md 中配置）")
     return name
 
 
 @mcp.tool()
 def transcribe_podcast_audio(
     audio_path: str,
-    show_name: str = DEFAULT_SHOW,
+    show_name: str = "",
     title: str = "播客转录",
     archive: bool = True,
 ) -> str:
@@ -134,7 +117,7 @@ def transcribe_podcast_audio(
 
     Args:
         audio_path: 本地音频路径（MP3/WAV/M4A 等）
-        show_name: 节目名称，演示默认「二十而已」
+        show_name: 节目名称，默认读取 host.md 第一个节目
         title: 节目标题，用于存档文件名
         archive: 是否保存到 archive/<节目名>/
     """
@@ -162,7 +145,7 @@ def transcribe_podcast_audio(
 @mcp.tool()
 def generate_titles_and_shownotes(
     transcript: str,
-    show_name: str = DEFAULT_SHOW,
+    show_name: str = "",
     llm_model: str = "",
     show_positioning: str = "",
 ) -> str:
@@ -170,7 +153,7 @@ def generate_titles_and_shownotes(
 
     Args:
         transcript: 播客转录文本
-        show_name: 节目名称，演示默认「二十而已」
+        show_name: 节目名称，默认读取 host.md 第一个节目
         llm_model: 可选，覆盖 config.yaml 中的 LLM 模型
         show_positioning: 可选，覆盖节目定位
     """
@@ -189,7 +172,7 @@ def generate_titles_and_shownotes(
 def podcast_deliver_assistant(
     transcript: str = "",
     audio_path: str = "",
-    show_name: str = DEFAULT_SHOW,
+    show_name: str = "",
     title: str = "播客转录",
     llm_model: str = "",
     show_positioning: str = "",
@@ -240,7 +223,7 @@ def save_final_release(
     quotes: str,
     timestamps: str,
     question: str,
-    show_name: str = DEFAULT_SHOW,
+    show_name: str = "",
     rename_if_title_changed: bool = True,
 ) -> str:
     """将用户确认的最终发布稿追加到 archive 转录文件末尾。"""
