@@ -1,0 +1,14 @@
+# podcast_deliver_assistant 配置（可直接修改）
+
+llm:
+  model: qwen-max
+  timeout: 60
+  retry_count: 3
+
+# 演示节目：二十而已（可自行增删 shows 条目）
+shows:
+  二十而已:
+    positioning: |
+      节目定位：针对 20+ 人群分享人生体悟，共同成长。
+      需要体现情感陪伴、突出人生 aha moment，给到听众建议，避免说教。
+      风格：理性、有料、温暖。
